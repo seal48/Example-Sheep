@@ -24,6 +24,7 @@
         "GameFramework.Storage",
         "GameFramework.Timer",
         "GameFramework.UI",
+        "GameFramework.RedDot",
         "GameFramework.Config.Unity",
         "GameFramework.Timer.Core"
     ],

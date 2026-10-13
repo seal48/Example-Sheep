@@ -25,5 +25,6 @@ namespace GameFramework.Log
         public const string Scene = "Scene";
         public const string Platform = "Platform";
         public const string Localization = "Loc";
+        public const string RedDot = "RedDot";
     }
 }

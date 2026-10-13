@@ -137,6 +137,28 @@ Unity.exe -quit -batchmode -projectPath <工程> ^
 真机 IL2CPP 构建时编成 DLL 从 `StreamingAssets/HotUpdate/` 动态加载；框架层 AOT 留在包里。
 入口：场景挂 AOT 的 `HybridCLRBoot` → 加载热更 DLL → 反射 `Game.HotEntry.Boot()` → `GameController.CreateRoot()`。
 
+### 红点系统
+
+```
+配表：Assets/Config/Excel/RedDot.xlsx 定义树（Id / ParentId / SortOrder / 描述）
+  main → main.mail → main.mail.unread
+       → main.activity → main.activity.limited / main.activity.checkin
+       → main.friend → main.friend.request
+       → main.bag
+
+业务（Game 层 / 热更）：
+  var redDot = GameController.Instance.RedDot;
+  redDot.RegisterCondition("main.mail.unread", () => mailSvc.UnreadCount);  // 拉模式
+  redDot.NotifyChanged("main.mail");                                        // 数据变了刷新
+  redDot.SetState("main.activity.checkin", true);                           // 推模式
+  bool on = redDot.IsOn("main.mail");                                       // 查询（父链聚合）
+
+UI：给入口挂 RedDotBadge 组件（NodeId + ShowCount），自动显隐/计数，订阅事件不轮询
+```
+
+> 树结构表驱动（可热更）、双模式点亮（推/拉）、事件驱动刷新（配 EventBus/Timer）。
+> 详见 [`Assets/Scripts/Framework/RedDotFramework/README.md`](Assets/Scripts/Framework/RedDotFramework/README.md)。
+
 ```
 改业务代码后出包：
 1) 菜单 HybridCLR/CompileDll/ActiveBuildTarget       编译热更 DLL
@@ -173,6 +195,7 @@ Unity.exe -quit -batchmode -projectPath <工程> ^
 | `Environments` | 多环境配置与构建时切换 |
 | `Core` | 跨模块契约（`IGameModule` / `ITickable`） |
 | `HybridCLRBoot` | HybridCLR 代码热更引导（AOT，场景挂载）+ `GameOptions` 启动配置 |
+| `RedDotFramework` | 红点系统：树状结构（配表驱动）+ 推/拉双模式 + 事件驱动 + UI 组件 |
 
 ## 程序集划分
 

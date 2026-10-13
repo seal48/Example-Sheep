@@ -1,3 +1,4 @@
+using Game;
 using GameFramework.Log;
 using GameFramework.Procedure;
 using UnityEngine;
@@ -29,6 +30,10 @@ namespace GameFramework.Startup
             }
 
             GameLog.Info(LogTag.Startup, "UI 就绪：" + message);
+
+            // 红点演示：注册业务红点条件（真实项目在登录/数据就绪后注册）
+            RedDotDemo.RegisterAll();
+
             ChangeState<ProcedureInitScene>();
         }
     }

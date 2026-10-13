@@ -3,6 +3,7 @@ using GameFramework.Audio;
 using GameFramework.Business;
 using GameFramework.Config;
 using GameFramework.Core;
+using GameFramework.RedDot;
 using GameFramework.Environments;
 using GameFramework.Event;
 using GameFramework.Log;
@@ -92,6 +93,7 @@ public class GameController : MonoBehaviour
     private EnvironmentEntry environment;
     private UIManager ui;
     private SpriteAtlasManager spriteAtlases;
+    private RedDotManager redDot;
     private ProcedureManager procedures;
     private BusinessManager business;
     private ConfigManager config;
@@ -140,6 +142,12 @@ public class GameController : MonoBehaviour
     public SpriteAtlasManager SpriteAtlases
     {
         get { return spriteAtlases; }
+    }
+
+    /// <summary>红点系统。业务：GameController.Instance.RedDot.RegisterCondition("main.mail.unread", () => n);</summary>
+    public RedDotManager RedDot
+    {
+        get { return redDot; }
     }
 
     /// <summary>流程管理器（启动流程 / 状态机）。</summary>
@@ -270,6 +278,7 @@ public class GameController : MonoBehaviour
         storage = new LocalStorageManager();
         ui = new UIManager();
         spriteAtlases = new SpriteAtlasManager();
+        redDot = new RedDotManager();
         audioMgr = new AudioManager();
         scene = new SceneLoader();
         platform = new PlatformManager(platformOptions, events, ui, timer, gameClient);
@@ -456,6 +465,12 @@ public class GameController : MonoBehaviour
         {
             spriteAtlases.Shutdown();
             spriteAtlases = null;
+
+        if (redDot != null)
+        {
+            redDot.Shutdown();
+            redDot = null;
+        }
         }
 
         if (audioMgr != null)
@@ -570,6 +585,8 @@ public class GameController : MonoBehaviour
         // 图集管理器跟着 UI 一起初始化（依赖资源服务）
         if (spriteAtlases != null && !spriteAtlases.IsInitialized)
             spriteAtlases.Init(resource, config);
+            if (redDot != null && !redDot.IsInitialized)
+                redDot.Init(config);
 
         ui.Init(resource, uiOptions, events, timer, onComplete);
     }

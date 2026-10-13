@@ -11,12 +11,13 @@ namespace GameFramework.Config
     public sealed partial class ConfigDatabase
     {
         /// <summary>所有表的文件名（不含扩展名），客户端用它预加载。</summary>
-        public static readonly string[] TableNames = { "Item", "LocEn", "LocFont", "LocZh", "ServerList", "UISprite" };
+        public static readonly string[] TableNames = { "Item", "LocEn", "LocFont", "LocZh", "RedDot", "ServerList", "UISprite" };
 
         public TbItem Item { get; private set; }
         public TbLocEn LocEn { get; private set; }
         public TbLocFont LocFont { get; private set; }
         public TbLocZh LocZh { get; private set; }
+        public TbRedDot RedDot { get; private set; }
         public TbServerList ServerList { get; private set; }
         public TbUISprite UISprite { get; private set; }
 
@@ -30,6 +31,8 @@ namespace GameFramework.Config
             loaded.Add(LocFont);
             LocZh = TbLocZh.Read(readFile(TbLocZh.FileName));
             loaded.Add(LocZh);
+            RedDot = TbRedDot.Read(readFile(TbRedDot.FileName));
+            loaded.Add(RedDot);
             ServerList = TbServerList.Read(readFile(TbServerList.FileName));
             loaded.Add(ServerList);
             UISprite = TbUISprite.Read(readFile(TbUISprite.FileName));
@@ -42,6 +45,7 @@ namespace GameFramework.Config
             LocEn = null;
             LocFont = null;
             LocZh = null;
+            RedDot = null;
             ServerList = null;
             UISprite = null;
         }

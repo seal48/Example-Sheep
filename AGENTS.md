@@ -52,6 +52,7 @@ AOT ──► 热更           不允许：AOT 代码不能静态引用热更程
 | UI 字段绑定 | `Tools/UI/绑定/生成全部面板的绑定代码`（面板类要 `partial`） |
 | 改业务代码（热更） | `HybridCLR/CompileDll/ActiveBuildTarget` → 拷 3 个 DLL 到 `StreamingAssets/HotUpdate/` → 重建资源 |
 | HybridCLR 元数据 | 改 AOT 程序集后跑 `HybridCLR/Generate/All` |
+| 红点 | 树在 `Assets/Config/Excel/RedDot.xlsx`（Id/ParentId）→ 导出；业务 `RedDot.RegisterCondition("节点", () => 数量)` → `NotifyChanged("节点")`；UI 挂 `RedDotBadge` 组件自动显隐 |
 | UI 图集打包 | 把 Sprite 图片放进 `Assets/UI/Atlas/<图集名>/` → 菜单 `Tools/UI/图集/从目录创建图集` → 重建资源 |
 | 图集配表 | `Assets/Config/Excel/UISprite.xlsx` 加一行（Id 逻辑ID → Atlas + Sprite）→ `Tools/配置表/导出全部表` → 重建资源 |
 | 运行时取图 | `GameController.Instance.SpriteAtlases.GetSpriteById("逻辑ID")`（或 GetSpriteByIdAsync）；图集在 bundle 里可热更 |

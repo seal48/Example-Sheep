@@ -1,0 +1,11 @@
+[
+  {"Id": "main", "ParentId": "", "SortOrder": 0, "Description": "主界面(根)"},
+  {"Id": "main.mail", "ParentId": "main", "SortOrder": 1, "Description": "邮箱"},
+  {"Id": "main.mail.unread", "ParentId": "main.mail", "SortOrder": 1, "Description": "未读邮件"},
+  {"Id": "main.activity", "ParentId": "main", "SortOrder": 2, "Description": "活动"},
+  {"Id": "main.activity.limited", "ParentId": "main.activity", "SortOrder": 1, "Description": "限时活动-可领取"},
+  {"Id": "main.activity.checkin", "ParentId": "main.activity", "SortOrder": 2, "Description": "签到-可领取"},
+  {"Id": "main.friend", "ParentId": "main", "SortOrder": 3, "Description": "好友"},
+  {"Id": "main.friend.request", "ParentId": "main.friend", "SortOrder": 1, "Description": "新好友申请"},
+  {"Id": "main.bag", "ParentId": "main", "SortOrder": 4, "Description": "背包"}
+]
