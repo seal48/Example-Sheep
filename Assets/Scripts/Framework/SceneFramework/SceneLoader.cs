@@ -469,8 +469,10 @@ namespace GameFramework.Scenes
 
         private void HideLoadingPanel()
         {
+            // 关闭时把进度归零：面板以干净状态待命，下次打开必然从 0 开始
+            //（双保险：ShowLoadingPanel 打开前也会清零，防止任何路径漏掉）
             if (loadingPanel != null)
-                loadingPanel.SetImmediate(1f, null);
+                loadingPanel.SetImmediate(0f, null);
 
             if (ui != null && ui.IsOpen(options.LoadingPanelName))
                 ui.Hide(options.LoadingPanelName);
