@@ -443,15 +443,21 @@ namespace GameFramework.Scenes
                 loadingPanel.SetImmediate(0f, text);
             };
 
+            // 已存在（隐藏缓存）的实例：立即拿到引用设好初始进度，再走 ui.Open 把它重新显示出来。
+            // 不这么做的话，Open 内部要等入场动画播完才回调 onOpened，loadingPanel 引用延迟赋值，
+            // 期间进度条不更新；而且旧逻辑对缓存实例只 SetImmediate 就 return，面板根本不会显示。
             Panel existing = ui.Get(options.LoadingPanelName);
             if (existing != null)
             {
                 loadingPanel = existing as IProgressPanel;
                 if (loadingPanel != null)
                     loadingPanel.SetImmediate(0f, text);
+
+                ui.Open(options.LoadingPanelName, null, onOpened);
                 return;
             }
 
+            // 首次创建：异步加载预制体，加载完 Show，onOpened 里再赋值。
             ui.Open(options.LoadingPanelName, null, onOpened);
         }
 
