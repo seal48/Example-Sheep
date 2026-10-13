@@ -469,10 +469,11 @@ namespace GameFramework.Scenes
 
         private void HideLoadingPanel()
         {
-            // 关闭时把进度归零：面板以干净状态待命，下次打开必然从 0 开始
-            //（双保险：ShowLoadingPanel 打开前也会清零，防止任何路径漏掉）
+            // 关闭时进度设满格：退场动画期间保持满格淡出，避免「进度条满→瞬间归零→淡出」的回缩观感。
+            // 下次打开时 ShowLoadingPanel 会重新清零（既有实例分支 / onOpened 都会 SetImmediate(0f)），
+            // 保证面板始终以 0 进度重新出现，不会带残留。
             if (loadingPanel != null)
-                loadingPanel.SetImmediate(0f, null);
+                loadingPanel.SetImmediate(1f, null);
 
             if (ui != null && ui.IsOpen(options.LoadingPanelName))
                 ui.Hide(options.LoadingPanelName);
