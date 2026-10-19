@@ -11,31 +11,16 @@ public partial class MainPanel
 {
     /// <summary>节点：Background</summary>
     public Image background;
-    /// <summary>节点：TitleText</summary>
-    public Text titleText;
-    /// <summary>节点：AccountText</summary>
-    public Text accountText;
-    /// <summary>节点：LevelText</summary>
-    public Text levelText;
-    /// <summary>节点：GoldText</summary>
-    public Text goldText;
-    /// <summary>节点：BagText</summary>
-    public Text bagText;
-    /// <summary>节点：PushText</summary>
-    public Text pushText;
-    /// <summary>节点：TipText</summary>
-    public Text tipText;
+    /// <summary>节点：StartButton</summary>
+    public Button startButton;
+    /// <summary>节点：StartButton/StartText</summary>
+    public Text startText;
 
     /// <summary>由生成代码统一赋值，时机在 OnInit 之前。</summary>
     protected override void BindNodes()
     {
-        background = Get<Image>("Background");
-        titleText = Get<Text>("TitleText");
-        accountText = Get<Text>("AccountText");
-        levelText = Get<Text>("LevelText");
-        goldText = Get<Text>("GoldText");
-        bagText = Get<Text>("BagText");
-        pushText = Get<Text>("PushText");
-        tipText = Get<Text>("TipText");
+        background = BindGet<Image>("Background");
+        startButton = BindGet<Button>("StartButton");
+        startText = BindGet<Text>("StartText");
     }
 }

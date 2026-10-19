@@ -29,13 +29,13 @@ public partial class SelectServerPanel
     /// <summary>由生成代码统一赋值，时机在 OnInit 之前。</summary>
     protected override void BindNodes()
     {
-        bg = Get<Image>("Bg");
-        panel = Get<Image>("Panel");
-        title = Get<Text>("Title");
-        closeButton = Get<Button>("CloseButton");
-        text = Get<Text>("Text");
-        serverItem = Get<Button>("ServerItem");
-        nameText = Get<Text>("Name");
-        status = Get<Text>("Status");
+        bg = BindGet<Image>("Bg");
+        panel = BindGet<Image>("Panel");
+        title = BindGet<Text>("Title");
+        closeButton = BindGet<Button>("CloseButton");
+        text = BindGet<Text>("Text");
+        serverItem = BindGet<Button>("ServerItem");
+        nameText = BindGet<Text>("Name");
+        status = BindGet<Text>("Status");
     }
 }

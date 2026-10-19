@@ -15,6 +15,10 @@ public partial class LoginPanel
     public Button loginButton;
     /// <summary>节点：LoginButton/LoginText</summary>
     public Text loginText;
+    /// <summary>节点：RegisterButton</summary>
+    public Button registerButton;
+    /// <summary>节点：RegisterButton/RegisterText</summary>
+    public Text registerText;
     /// <summary>节点：LoginTitle</summary>
     public Text loginTitle;
     /// <summary>节点：LoginTitle/AccountInput</summary>
@@ -27,10 +31,6 @@ public partial class LoginPanel
     public InputField passwordInput;
     /// <summary>节点：PasswordTitle/PasswordInput/PasswordTitleText</summary>
     public Text passwordTitleText;
-    /// <summary>节点：RegisterButton</summary>
-    public Button registerButton;
-    /// <summary>节点：RegisterButton/RegisterText</summary>
-    public Text registerText;
     /// <summary>节点：LanguageToggle</summary>
     public Button languageToggle;
     /// <summary>节点：LanguageToggle/Text</summary>
@@ -43,20 +43,20 @@ public partial class LoginPanel
     /// <summary>由生成代码统一赋值，时机在 OnInit 之前。</summary>
     protected override void BindNodes()
     {
-        bg = Get<Image>("Bg");
-        loginButton = Get<Button>("LoginButton");
-        loginText = Get<Text>("LoginText");
-        loginTitle = Get<Text>("LoginTitle");
-        accountInput = Get<InputField>("AccountInput");
-        loginTitleText = Get<Text>("LoginTitleText");
-        passwordTitle = Get<Text>("PasswordTitle");
-        passwordInput = Get<InputField>("PasswordInput");
-        passwordTitleText = Get<Text>("PasswordTitleText");
-        registerButton = Get<Button>("RegisterButton");
-        registerText = Get<Text>("RegisterText");
-        languageToggle = Get<Button>("LanguageToggle");
-        text = Get<Text>("Text");
-        serverSelectButton = Get<Button>("ServerSelectButton");
-        serverSelectText = Get<Text>("ServerSelectText");
+        bg = BindGet<Image>("Bg");
+        loginButton = BindGet<Button>("LoginButton");
+        loginText = BindGet<Text>("LoginText");
+        registerButton = BindGet<Button>("RegisterButton");
+        registerText = BindGet<Text>("RegisterText");
+        loginTitle = BindGet<Text>("LoginTitle");
+        accountInput = BindGet<InputField>("AccountInput");
+        loginTitleText = BindGet<Text>("LoginTitleText");
+        passwordTitle = BindGet<Text>("PasswordTitle");
+        passwordInput = BindGet<InputField>("PasswordInput");
+        passwordTitleText = BindGet<Text>("PasswordTitleText");
+        languageToggle = BindGet<Button>("LanguageToggle");
+        text = BindGet<Text>("Text");
+        serverSelectButton = BindGet<Button>("ServerSelectButton");
+        serverSelectText = BindGet<Text>("ServerSelectText");
     }
 }

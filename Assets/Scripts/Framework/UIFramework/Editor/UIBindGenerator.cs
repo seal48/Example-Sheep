@@ -144,7 +144,26 @@ namespace GameFramework.UI.Editor
 
                 string scriptPath = AssetDatabase.GetAssetPath(script);
                 if (!IsPartialClass(scriptPath))
+                {
                     report.Append("  [不是 partial] ").Append(scriptPath).Append(" —— 需要改成 partial class 才能合并生成代码\n");
+                    continue;
+                }
+
+                // 过期检测：预制体比生成文件新 → 改过预制体（可能删了组件/改了名）但没重新生成
+                Type panelType = panel.GetType();
+                string genPath = Path.Combine(Path.GetDirectoryName(scriptPath), panelType.Name + GeneratedSuffix)
+                                     .Replace('\\', '/');
+                string assetFull = Path.GetFullPath(path).Replace('/', Path.DirectorySeparatorChar);
+                string genFull = Path.GetFullPath(genPath).Replace('/', Path.DirectorySeparatorChar);
+                if (!File.Exists(genFull))
+                {
+                    report.Append("  [未生成] ").Append(path).Append(" —— 还没有绑定文件，请先生成\n");
+                }
+                else if (File.GetLastWriteTimeUtc(assetFull) > File.GetLastWriteTimeUtc(genFull))
+                {
+                    report.Append("  [过期] ").Append(path)
+                          .Append(" —— 预制体比绑定代码新，可能删了/改了 UI 组件，请重新生成（Tools/UI/绑定/生成全部面板）\n");
+                }
             }
 
             Debug.Log($"[UIBind] 校验 {checkedCount} 个面板：\n" +
@@ -412,7 +431,7 @@ namespace GameFramework.UI.Editor
             {
                 BindEntry e = entries[i];
                 sb.Append(indent).Append("        ").Append(e.FieldName)
-                  .Append(" = Get<").Append(e.ComponentType.Name).Append(">(\"").Append(e.Key).Append("\");\n");
+                  .Append(" = BindGet<").Append(e.ComponentType.Name).Append(">(\"").Append(e.Key).Append("\");\n");
             }
             sb.Append(indent).Append("    }\n");
 

@@ -234,6 +234,27 @@ namespace GameFramework.UI
             }
         }
 
+        /// <summary>
+        /// 手动刷新节点绑定：清掉所有缓存后重新收集节点并重跑一次 <see cref="BindNodes"/>。
+        ///
+        /// 用途：删了 / 改了预制体里的 UI 组件，但旧的绑定引用还在（字段可能拿到 null 或报"找不到组件"）。
+        /// 在 Inspector 右键 Panel 组件 →「刷新 UI 绑定」即可立即重新解析；之后重新生成绑定代码可彻底清掉多余字段。
+        /// </summary>
+        [ContextMenu("刷新 UI 绑定")]
+        public void Rebind()
+        {
+            bound = false;
+            nodesByName.Clear();
+            nodesByPath.Clear();
+            componentCache.Clear();
+            duplicatedNames.Clear();
+            if (warnedBindKeys != null) warnedBindKeys.Clear();
+
+            Bind();
+            BindNodes();
+            GameLog.Info(LogTag.Panel, "[" + name + "] 已刷新 UI 绑定（重新收集节点并解析组件）。");
+        }
+
         private void CollectNodes(Transform parent, string parentPath)
         {
             int count = parent.childCount;
@@ -300,6 +321,30 @@ namespace GameFramework.UI
             GameLog.ErrorFormat(LogTag.Panel, "[{0}] 取不到 {1}：节点 \"{2}\" 不存在，或节点上没挂该组件。", name, typeof(T).Name, key);
             return null;
         }
+
+        /// <summary>
+        /// 绑定专用：给生成代码（XxxPanel.Bindings.g.cs 的 BindNodes）用。
+        /// 取不到时只打一条警告并把字段置 null，不报 Error ——
+        /// 因为「删除 UI 组件后旧绑定还在」是正常开发场景，不应吓人；
+        /// 但也不能静默（会掩盖真正的绑定错误），所以警告并提示重新生成。
+        /// 每个 key 只警告一次（面板打开一次），避免刷屏。
+        /// </summary>
+        protected T BindGet<T>(string key) where T : Component
+        {
+            T component;
+            if (TryGet(key, out component))
+                return component;
+
+            if (warnedBindKeys == null) warnedBindKeys = new HashSet<string>(StringComparer.Ordinal);
+            if (warnedBindKeys.Add(key))
+            {
+                GameLog.WarnFormat(LogTag.Panel,
+                    "[{0}] 绑定节点 \"{1}\" 取不到 {2} —— 该 UI 组件可能已被删除/改名。请重新生成绑定：Tools/UI/绑定/生成全部面板的绑定代码。",
+                    name, key, typeof(T).Name);
+            }
+            return null;
+        }
+        private HashSet<string> warnedBindKeys;
 
         /// <summary>取节点上指定类型的组件，取不到返回 false（不报错）。</summary>
         public bool TryGet<T>(string key, out T component) where T : Component

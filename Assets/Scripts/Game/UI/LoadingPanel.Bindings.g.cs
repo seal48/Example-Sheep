@@ -25,11 +25,11 @@ public partial class LoadingPanel
     /// <summary>由生成代码统一赋值，时机在 OnInit 之前。</summary>
     protected override void BindNodes()
     {
-        bg = Get<Image>("Bg");
-        progressSlider = Get<Slider>("ProgressSlider");
-        background = Get<Image>("Background");
-        fill = Get<Image>("Fill");
-        tipText = Get<Text>("TipText");
-        progressText = Get<Text>("ProgressText");
+        bg = BindGet<Image>("Bg");
+        progressSlider = BindGet<Slider>("ProgressSlider");
+        background = BindGet<Image>("Background");
+        fill = BindGet<Image>("Fill");
+        tipText = BindGet<Text>("TipText");
+        progressText = BindGet<Text>("ProgressText");
     }
 }
