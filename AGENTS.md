@@ -49,7 +49,7 @@ AOT ──► 热更           不允许：AOT 代码不能静态引用热更程
 | 改预制体/资源 | `Tools/YooAsset/2` + `6` + 清 `yoo/` |
 | 切环境 | `Tools/环境/切换到/开发\|测试\|正式`；打包 `Tools/环境/构建/...` |
 | 起后端 | `start-server.cmd`（7777）；自测 `--selftest` |
-| UI 字段绑定 | `Tools/UI/绑定/生成全部面板的绑定代码`（面板类要 `partial`）；删了组件后 Inspector 点「刷新 UI 绑定」按钮，或跑「校验全部面板」看哪些过期 |
+| UI 字段绑定 | `Tools/UI/绑定/生成全部面板的绑定代码`（面板类要 `partial`）；删了组件后 Inspector 点「刷新 UI 绑定」按钮（=重解析+重生成绑定代码，清掉失效字段），或跑「校验全部面板」看哪些过期 |
 | 改业务代码（热更） | `HybridCLR/CompileDll/ActiveBuildTarget` → 拷 3 个 DLL 到 `StreamingAssets/HotUpdate/` → 重建资源 |
 | HybridCLR 元数据 | 改 AOT 程序集后跑 `HybridCLR/Generate/All` |
 | 红点 | 树在 `Assets/Config/Excel/RedDot.xlsx`（Id/ParentId）→ 导出；业务 `RedDot.RegisterCondition("节点", () => 数量)` → `NotifyChanged("节点")`；UI 挂 `RedDotBadge` 组件自动显隐 |
