@@ -238,9 +238,10 @@ namespace GameFramework.UI
         /// 手动刷新节点绑定：清掉所有缓存后重新收集节点并重跑一次 <see cref="BindNodes"/>。
         ///
         /// 用途：删了 / 改了预制体里的 UI 组件，但旧的绑定引用还在（字段可能拿到 null 或报"找不到组件"）。
-        /// 在 Inspector 右键 Panel 组件 →「刷新 UI 绑定」即可立即重新解析；之后重新生成绑定代码可彻底清掉多余字段。
+        /// Inspector 里直接点「刷新 UI 绑定」按钮（或右键组件菜单）即可立即重新解析；之后重新生成绑定代码可彻底清掉多余字段。
         /// </summary>
         [ContextMenu("刷新 UI 绑定")]
+        [Button("刷新 UI 绑定")]
         public void Rebind()
         {
             bound = false;
