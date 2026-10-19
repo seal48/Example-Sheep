@@ -14,7 +14,9 @@
 | `UIPanelAttribute.cs` | `[UIPanel]` 注册特性，UIManager 自动扫描 |
 | `Panel.cs` | 所有界面的基类（含 `BindNodes` 绑定钩子） |
 | `UIManager.cs` | 总管理器：Root 加载、面板注册、打开 / 关闭、每帧驱动 |
+| `ButtonAttribute.cs` | `[Button("文字")]` 特性：标在面板方法上，Inspector 底部出现按钮，点一下调用 |
 | `Editor/UIBindGenerator.cs` | 编辑器工具：扫预制体生成 `XxxPanel.Bindings.g.cs`（见 5.5 节） |
+| `Editor/PanelInspector.cs` | Panel 的 Inspector：默认面板 + 画出所有 `[Button]` 方法按钮（应用到全部子类） |
 
 UI Root 预制体：`Assets/Prefabs/UIRoot.prefab`。
 **具体游戏界面**（LoginPanel / MainPanel / …）不在这个框架里，它们在 `Assets/Scripts/Game/UI/`。
@@ -188,8 +190,8 @@ public partial class ShopPanel
 
     protected override void BindNodes()          // 在 OnInit 之前调用
     {
-        closeButton = Get<Button>("CloseButton");
-        title = Get<Text>("Title");
+        closeButton = BindGet<Button>("CloseButton");   // BindGet：取不到只警告，不报错
+        title = BindGet<Text>("Title");
     }
 }
 ```
@@ -200,7 +202,7 @@ public partial class ShopPanel
 |---|---|
 | `Tools/UI/绑定/生成全部面板的绑定代码` | 扫 `Assets/Prefabs/` 下所有带 Panel 的面板，逐个生成 |
 | `Tools/UI/绑定/生成选中预制体的绑定代码` | 只生成选中的（可多选） |
-| `Tools/UI/绑定/校验全部面板（只检查不生成）` | 报告哪些面板不是 `partial`、哪些预制体缺脚本 |
+| `Tools/UI/绑定/校验全部面板（只检查不生成）` | 报告哪些面板不是 `partial`、缺脚本、以及「过期」的（预制体比绑定文件新 = 删过/改过组件没重新生成） |
 
 ### 规则
 
@@ -211,6 +213,12 @@ public partial class ShopPanel
 - **保留名**：字段名和继承来的成员撞车时自动加组件后缀 —— 节点 `Name`（`Text`）会生成 `nameText`，
   避免屏蔽掉 `UnityEngine.Object.name` 这类成员。
 - **不想生成的节点**：名字以 `_` 开头即可跳过。
+
+### 删了 UI 组件怎么办
+
+生成代码用 `BindGet<T>`：节点 / 组件被删后取不到，只打一条警告并置 null（提示重新生成），不报 Error。
+Inspector 里直接点 **「刷新 UI 绑定」** 按钮（`Panel.Rebind()`）立即清缓存重绑；校验菜单会标出「过期」的面板。
+想给面板加别的调试按钮，用 `[Button("文字")]` 标在方法上，Inspector 底部自动出现按钮。
 
 ### 注意
 

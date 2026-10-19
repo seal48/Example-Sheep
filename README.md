@@ -131,6 +131,19 @@ Unity.exe -quit -batchmode -projectPath <工程> ^
 扫预制体生成 `XxxPanel.Bindings.g.cs` 里的字段声明，免去运行时按字符串查找。
 面板类需要是 `partial`。
 
+> **删了 UI 组件后**：绑定取不到组件只打警告（不报 Error），提示重新生成。
+> Inspector 里点 **「刷新 UI 绑定」** 按钮立即重绑；校验菜单会标出 **[过期]** 的面板。
+
+### Inspector 按钮（[Button] 特性）
+
+任意面板方法标 `[Button("文字")]`，选中预制体后 Inspector 底部直接出现按钮，点一下调用
+（比右键菜单直观；框架自带，热更面板也能用）：
+
+```csharp
+[Button("刷新 UI 绑定")]
+public void Rebind() { ... }
+```
+
 ### 代码热更（HybridCLR）
 
 业务层（`Game` / `GameFramework.Business` / `GameFramework.ServerSelect`）是**热更程序集**，
@@ -185,7 +198,7 @@ UI：给入口挂 RedDotBadge 组件（NodeId + ShowCount），自动显隐/计�
 | `SecurityFramework` | 协议与存档加解密（纯 C#） |
 | `ResourceFramework` | YooAsset 封装、远端热更、下载进度、CRC 校验 |
 | `NetFramework` | 协议编解码、客户端（心跳 / 断线重连）、服务端、区服 |
-| `UIFramework` | Panel / 层级 / 异步加载 / 绑定代码生成 / SpriteAtlas 图集取图 |
+| `UIFramework` | Panel / 层级 / 异步加载 / 绑定代码生成+手动刷新 / `[Button]` Inspector 按钮 / SpriteAtlas 图集取图 |
 | `Config` | Excel -> 代码 + bytes 工具链，客户端服务端同一份表 |
 | `LocalizationFramework` | 多语言：文本 / 图片 / 字体，一个 ID 对应各语言内容 |
 | `AudioFramework` | BGM 淡入淡出、音效通道池 |
