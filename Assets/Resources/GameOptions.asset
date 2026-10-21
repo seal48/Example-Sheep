@@ -54,7 +54,8 @@ MonoBehaviour:
       BlockRaycastWhileAnimating: 1
       MaxTweens: 512
       MaxSequences: 64
-    PreloadPanels: []
+    PreloadPanels:
+    - RewardPanel
   eventOptions:
     LogPublish: 0
     MaxEventsPerFlush: 1000
