@@ -6,6 +6,7 @@ using DG.Tweening;
 using GameFramework.Event;
 using GameFramework.Timer;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace GameFramework.UI
 {
@@ -455,7 +456,40 @@ namespace GameFramework.UI
 
             Bind();
             BindNodes();   // 生成代码在这里把节点赋给字段（默认空实现）
+            EnsureButtonPressAnims();
             OnInit();
+        }
+
+        /// <summary>
+        /// 任意按钮被点击后的全局回调（业务层挂音效等）。
+        /// 框架只负责在按钮 onClick 里转发一次，不关心具体做什么——避免框架里硬编码音效名。
+        /// </summary>
+        public static Action<Button> ButtonClicked;
+
+        /// <summary>
+        /// 给面板里所有 Button 自动挂上点击动画组件（UIButtonPressAnim：按下缩小、松开弹回），
+        /// 并挂一个转发到 <see cref="ButtonClicked"/> 的点击回调。
+        /// 只对预制体里已有的按钮生效；运行时动态创建的按钮需要自己处理。
+        /// </summary>
+        private void EnsureButtonPressAnims()
+        {
+            Button[] buttons = GetComponentsInChildren<Button>(true);
+            if (buttons == null || buttons.Length == 0) return;
+
+            for (int i = 0; i < buttons.Length; i++)
+            {
+                Button button = buttons[i];
+                if (button == null) continue;
+                if (button.GetComponent<UIButtonPressAnim>() == null)
+                    button.gameObject.AddComponent<UIButtonPressAnim>();
+
+                // 点击转发（业务可挂音效）
+                Button captured = button;
+                button.onClick.AddListener(() =>
+                {
+                    if (ButtonClicked != null) ButtonClicked(captured);
+                });
+            }
         }
 
         /// <summary>显示前的准备：此时还没激活，先摆好动画起始状态，免得第一帧闪出完整界面。</summary>
