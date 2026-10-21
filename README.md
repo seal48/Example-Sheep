@@ -1,235 +1,49 @@
-# MCP — Unity 游戏框架 + 示例业务
+# 羊了个羊 · 示例（Example-Sheep）
 
-一个**通用 Unity 手游框架**（`Framework/`）+ 一份**示例业务**（`Game/`），
-后端服务端与客户端**共享同一套纯 C# 代码**（协议 / 安全 / 计时内核 / 配置表）。
+用 **UnityFramework** 做的一个示例项目：**羊了个羊**（卡槽三消）+ 大厅养成（牧场养羊 / 星球排行 / 图鉴 / 商店）。
 
-> 框架部分可以整体搬到别的项目；`Game/` 换项目时整个替换。
-> 详细的分层约定、依赖方向、模块清单见 [`Assets/Scripts/README.md`](Assets/Scripts/README.md)。
+框架本身（通用模块、工具链、后端、热更）不在这里，请看框架仓库：
 
-## 环境要求
+👉 **https://github.com/seal48/UnityFramework**
 
-| | 版本 |
-|---|---|
-| Unity | **2021.3.26f1c1**（含 Android Build Support 模块） |
-| .NET SDK | **8.0**（编译 / 运行服务端） |
-| 平台 | Windows（开发机）；构建目标为 Android |
+> 这个仓库只放「按框架做出来的案例」，框架的用法 / 模块文档 / 依赖约定都在上面那个仓库，本文不再重复。
 
-## 目录结构
+## 这个示例做了什么
+
+**玩法**
+- 多层牌堆（支持方格满铺 / 牌山随机 / 配表人工布局三种关卡样式）
+- 点击牌进入 7 格卡槽，同图标 3 张自动消除；槽满即判负
+- 道具：撤回、移出（暂存区）、洗牌
+- 两关：通关第 1 关自动进第 2 关，通关第 2 关回大厅并随机奖励一只未拥有的羊
+
+**大厅**
+- 牧场：把已获得的羊随机不重叠地摆出来
+- 星球排行：按羊数量排前 10，纵向滚动 + 对象池复用，自己的星球也在列表里
+- 收藏图鉴：羊 / 砖块两个页签
+- 商店：金币 / 钻石商品（服务端校验并发放）
+
+**系统**
+- 账号登录、背包 / 宠物 / 商店 / 排行数据服务端权威同步
+- 红点（获得新羊 → 收藏入口 + 羊图标，看过即清除）
+- 背景音乐（大厅 / 关卡各一首，切换场景交叉淡入）+ 全局按钮点击音效
+- GM 面板：游戏内按 **F1** 打开，可加道具 / 加羊 / 改金币、查排行
+
+## 运行
+
+1. 启动后端：`start-server.cmd`（默认 `127.0.0.1:7777`）
+2. Unity **2021.3.26f1** 打开工程，打开 `Assets/Scenes/Start.unity`，直接 Play
+3. 首次运行需要资源包：菜单 `Tools/YooAsset/2. 构建资源` → `Tools/YooAsset/6. 同步`
+
+## 目录
 
 ```
 Assets/
-  Scripts/
-    Framework/        通用框架（17 个模块，32 个程序集）
-    Game/             示例业务：GameController + 启动流程 + UI + 业务系统
-  Config/             Excel 配置表源文件（策划改这里）
-  ConfigData/         客户端配置表产物（.bytes）
-  ConfigDataServer/   服务端配置表产物（.bytes）
-  Prefabs/ Scenes/ Audio/ Fonts/ ...
-Packages/             内嵌 YooAsset（含 asmdef）
-ServerHost/           后端服务端（net8.0 控制台程序，与客户端共享纯 C# 代码）
-Tools/ConfigTool/     配置表导出工具（Excel -> 代码 + .bytes）
-start-server.cmd      一键启动后端
+  Scripts/Framework/    框架代码（与框架仓库同源）
+  Scripts/Game/         本示例的业务：玩法 / 界面 / 业务系统
+  Config/Excel/         配置表（道具、羊、砖块、关卡、商店、红点…）
+  ConfigData/           客户端配置产物（由配置表导出）
+  ConfigDataServer/     服务端配置产物
+  Prefabs/ Scenes/ UI/ Audio/
+ServerHost/             后端服务（与客户端共享同一套纯 C# 代码）
+Tools/ConfigTool/       配置表导出工具（不打开 Unity 也能导出）
 ```
-
-## 快速开始
-
-**1. 起后端**
-
-```bat
-start-server.cmd                            :: 127.0.0.1:7777（被占用会自动往后找端口）
-start-server.cmd --port 9000                :: 指定端口
-start-server.cmd --selftest                 :: 自测（安全 / 加密 / 协议）
-start-server.cmd --frametest                :: 帧同步自测
-start-server.cmd --protocoltest             :: 协议自测
-start-server.cmd --pushtest                 :: 推送自测
-```
-
-**2. 用 Unity 打开工程**，打开 `Assets/Scenes/SampleScene.unity`，直接 Play。
-
-登录界面会预填上次的账号；第一次跑可以点「注册」。
-
-> 首次运行需要资源包。如果卡在加载界面，按下面「资源构建」走一遍。
-
-## 常用工作流
-
-### 配置表（改 Excel 后）
-
-```
-菜单 Tools/配置表/导出全部表
-```
-Excel 放在 `Assets/Config/Excel/`，产出：生成代码 + `Assets/ConfigData/*.bytes` +
-`Assets/ConfigDataServer/*.bytes` + `Assets/Config/Json/*.json`。
-表头约定（`##var` / `##type` / `##group` / `##`）见 `Assets/Scripts/Framework/Config/README.md`。
-
-### 资源（改了预制体 / 资源 / 配置表后**必须做**）
-
-```
-1) 菜单 Tools/YooAsset/1. 配置资源收集器（首次运行）
-2) 菜单 Tools/YooAsset/2. 构建资源（Android + 拷进首包）
-3) 菜单 Tools/YooAsset/6. 同步 Android 产物到本地服务器目录
-```
-
-资源站是仓库外的本地静态服务器（`127.0.0.1:8000`，根目录即 `ServerData/Android`）。
-改了资源忘了同步，客户端会**静默加载旧资源** —— 排查时先清 `yoo/` 缓存再试。
-
-> ⚠️ **动了 asmdef 或移动脚本目录后必须重建资源包**，否则已构建的 bundle 里
-> MonoBehaviour 引用会失效（现象：卡在 UI 初始化 + 报「根节点没有 Panel 组件」）。
-
-### 多环境（开发 / 测试 / 正式）
-
-```
-菜单 Tools/环境/切换到/开发｜测试｜正式      :: 编辑器里切
-菜单 Tools/环境/当前环境                     :: 看当前完整配置
-菜单 Tools/环境/构建/开发｜测试｜正式         :: 按环境打包 -> Builds/<环境>/
-```
-
-服务器地址、资源地址、日志级别、存档目录都在
-`Assets/Resources/EnvironmentConfig.asset` 里，**不在场景里**。
-命令行出包：
-
-```bat
-Unity.exe -quit -batchmode -projectPath <工程> ^
-  -executeMethod GameFramework.Environments.Editor.EnvironmentBuilder.BuildFromCommandLine ^
-  -environment Production -buildTarget Android
-```
-
-### UI 图集（SpriteAtlas，表驱动 + 热更）
-
-```
-1) 把 Sprite 图片放进 Assets/UI/Atlas/<图集名>/  （一个子目录 = 一张图集）
-2) 菜单 Tools/UI/图集/从目录创建图集          （生成 <图集名>.spriteatlas 并自动打包）
-3) 配表：Assets/Config/Excel/UISprite.xlsx 加一行
-     Id(逻辑ID) | Atlas(图集名) | Sprite(图集内图片名)
-   然后 Tools/配置表/导出全部表
-4) 重建资源包（Tools/YooAsset/2 + 6 + 清 yoo/）
-5) 运行时取图（不写死图集/图片名，只用逻辑 ID）：
-     var item = GameController.Instance.Config.Database.Item.Get(2);
-     GameController.Instance.SpriteAtlases.GetSpriteById(item.SpriteId)             // 已加载则同步
-     GameController.Instance.SpriteAtlases.GetSpriteByIdAsync(item.SpriteId, s => ...)  // 异步
-     // Item.SpriteId = "icon_sword"，对应 UISprite 表：Atlas=TestAtlas, Sprite=sword
-```
-
-> **⚠️ 图集必须打包**：`Tools/UI/图集/从目录创建图集` 会自动调
-> `SpriteAtlasUtility.PackAllAtlases` 强制打包。**别手动 `new SpriteAtlas()` + Add 而不打包** ——
-> 未打包的图集里 Sprite 是占位符，运行时 `GetSprite()` 会**原生崩溃（SIGSEGV）**（Unity 2021.3 已知问题），
-> 而且 YooAsset 的 bundle 构建**不会**自动打包图集。改完图集图片后要重跑该菜单再重建资源包。
->
-> **稳妥备选（推荐新手/首次）**：完全用 Unity 标准 GUI 创建图集 ——
-> 右键 `Assets/UI/Atlas/` → `Create → 2D → Sprite Atlas` → 选中图集资产 → 把 Sprite 拖进
-> Packables 列表 → 点右上角 **Pack** 按钮。效果一样，绕开脚本化打包在这个 Unity 版本的偶发崩溃。
-> 框架只消费图集资产，不管它是 GUI 还是脚本建的。
->
-> 图集在 YooAsset bundle 里，走远端下载 = **资源热更**（改图 / 加图不用发版，只更新资源包）。
-> 低层 API（按图集名+图片名直取）也保留：`GetSprite(atlas, sprite)` / `GetSpriteAsync`。
-
-### UI 绑定代码生成
-
-```
-菜单 Tools/UI/绑定/生成全部面板的绑定代码
-菜单 Tools/UI/绑定/校验全部面板（只检查不生成）
-```
-扫预制体生成 `XxxPanel.Bindings.g.cs` 里的字段声明，免去运行时按字符串查找。
-面板类需要是 `partial`。
-
-> **删了 UI 组件后**：绑定取不到组件只打警告（不报 Error），提示重新生成。
-> Inspector 里点 **「刷新 UI 绑定」** 按钮（或右键组件菜单）→ **重新解析节点 + 按当前预制体重新生成绑定代码**
-> （删掉的节点/组件字段会从 `.Bindings.g.cs` 里彻底清掉，不留失效引用）；校验菜单会标出 **[过期]** 的面板。
-
-### Inspector 按钮（[Button] 特性）
-
-任意面板方法标 `[Button("文字")]`，选中预制体后 Inspector 底部直接出现按钮，点一下调用
-（比右键菜单直观；框架自带，热更面板也能用）：
-
-```csharp
-[Button("刷新 UI 绑定")]
-public void Rebind() { ... }
-```
-
-### 代码热更（HybridCLR）
-
-业务层（`Game` / `GameFramework.Business` / `GameFramework.ServerSelect`）是**热更程序集**，
-真机 IL2CPP 构建时编成 DLL 从 `StreamingAssets/HotUpdate/` 动态加载；框架层 AOT 留在包里。
-入口：场景挂 AOT 的 `HybridCLRBoot` → 加载热更 DLL → 反射 `Game.HotEntry.Boot()` → `GameController.CreateRoot()`。
-
-### 红点系统
-
-```
-配表：Assets/Config/Excel/RedDot.xlsx 定义树（Id / ParentId / SortOrder / 描述）
-  main → main.mail → main.mail.unread
-       → main.activity → main.activity.limited / main.activity.checkin
-       → main.friend → main.friend.request
-       → main.bag
-
-业务（Game 层 / 热更）：
-  var redDot = GameController.Instance.RedDot;
-  redDot.RegisterCondition("main.mail.unread", () => mailSvc.UnreadCount);  // 拉模式
-  redDot.NotifyChanged("main.mail");                                        // 数据变了刷新
-  redDot.SetState("main.activity.checkin", true);                           // 推模式
-  bool on = redDot.IsOn("main.mail");                                       // 查询（父链聚合）
-
-UI：给入口挂 RedDotBadge 组件（NodeId + ShowCount），自动显隐/计数，订阅事件不轮询
-```
-
-> 树结构表驱动（可热更）、双模式点亮（推/拉）、事件驱动刷新（配 EventBus/Timer）。
-> 详见 [`Assets/Scripts/Framework/RedDotFramework/README.md`](Assets/Scripts/Framework/RedDotFramework/README.md)。
-
-```
-改业务代码后出包：
-1) 菜单 HybridCLR/CompileDll/ActiveBuildTarget       编译热更 DLL
-2) 把 HybridCLRData/HotUpdateDlls/<平台>/ 下的 Game.dll /
-   GameFramework.Business.dll / GameFramework.ServerSelect.dll
-   拷到 Assets/StreamingAssets/HotUpdate/
-3) 重建资源包（Tools/YooAsset/2 + 6 + 清 yoo/ 缓存）
-4) Tools/环境/构建/<环境> 出包
-```
-
-> 编辑器里不加载热更 DLL（直接用编译进编辑器的程序集），所以编辑器改代码不用重编 DLL。
-> 改 AOT 程序集后跑 `HybridCLR/Generate/All` 重新生成 `Assets/HybridCLRGenerate/`（别手动改）。
-> 详见 [`Assets/Scripts/Boot/README.md`](Assets/Scripts/Boot/README.md)。
-
-## 框架能力
-
-| 模块 | 说明 |
-|---|---|
-| `LogFramework` | 分级日志、多出口（控制台 / 文件 / 内存）、定时落盘 |
-| `EventFramework` | 事件总线（同步 Publish / 排队 Post） |
-| `TimerFramework` | 计时器 / 调度，纯 C# 内核可与服务端共用 |
-| `ProcedureFramework` | 启动流程状态机 |
-| `StorageFramework` | 本地存档（设置 / 账号 / 缓存），AES + HMAC 加密 |
-| `SecurityFramework` | 协议与存档加解密（纯 C#） |
-| `ResourceFramework` | YooAsset 封装、远端热更、下载进度、CRC 校验 |
-| `NetFramework` | 协议编解码、客户端（心跳 / 断线重连）、服务端、区服 |
-| `UIFramework` | Panel / 层级 / 异步加载 / 绑定代码生成+手动刷新 / `[Button]` Inspector 按钮 / SpriteAtlas 图集取图 |
-| `Config` | Excel -> 代码 + bytes 工具链，客户端服务端同一份表 |
-| `LocalizationFramework` | 多语言：文本 / 图片 / 字体，一个 ID 对应各语言内容 |
-| `AudioFramework` | BGM 淡入淡出、音效通道池 |
-| `SceneFramework` | 场景加载（带进度条 / 排队 / 附加场景） |
-| `PoolFramework` | 对象池（GameObject / 普通对象） |
-| `PlatformFramework` | 生命周期、安全区、权限、返回键、回前台断线处理 |
-| `Environments` | 多环境配置与构建时切换 |
-| `Core` | 跨模块契约（`IGameModule` / `ITickable`） |
-| `HybridCLRBoot` | HybridCLR 代码热更引导（AOT，场景挂载）+ `GameOptions` 启动配置 |
-| `RedDotFramework` | 红点系统：树状结构（配表驱动）+ 推/拉双模式 + 事件驱动 + UI 组件 |
-
-## 程序集划分
-
-32 个程序集，纯 C# 部分（服务端也编译）标了 `noEngineReferences: true`：
-谁往里面写 `using UnityEngine;` 会**立刻编译报错**，而不是等服务端 `dotnet build` 才发现。
-
-详见 [`Assets/Scripts/README.md`](Assets/Scripts/README.md)。
-
-## 不提交的内容
-
-`Library/` `Temp/` `Builds/` `Bundles/` `ServerData/` `GameData/` `GameLogs/`
-`LocalData/` `yoo/` 以及 Unity 自动生成的 `*.csproj` / `*.sln`。
-
-其中两个是**数据安全**相关，务必保持忽略：
-
-- `LocalData/` —— 本地存档，含登录密码 / token
-- `GameData/` —— 服务端账号库（SQLite）
-
-## 许可
-
-[MIT](LICENSE)。随便用，保留版权声明即可。
-
-> 附注：源码里出现的 `"dev"/"dev"`（默认登录账号）和 `"pwd123456"`（`--selftest` 演示账号）都是**本地内置演示服务器**的测试凭据，不是任何线上系统的真实口令；任何人 clone 下来都能看到并用它们连本地服，无需担心。
