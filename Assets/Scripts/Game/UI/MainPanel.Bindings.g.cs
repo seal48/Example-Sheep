@@ -13,14 +13,23 @@ public partial class MainPanel
     public Image background;
     /// <summary>节点：StartButton</summary>
     public Button startButton;
-    /// <summary>节点：StartButton/StartText</summary>
-    public Text startText;
+    /// <summary>节点：MenuBtn</summary>
+    public Button menuBtn;
+    /// <summary>节点：RankBtn</summary>
+    public Button rankBtn;
+    /// <summary>节点：ShopBtn</summary>
+    public Button shopBtn;
+    /// <summary>节点：CollectionBtn</summary>
+    public Button collectionBtn;
 
     /// <summary>由生成代码统一赋值，时机在 OnInit 之前。</summary>
     protected override void BindNodes()
     {
         background = BindGet<Image>("Background");
         startButton = BindGet<Button>("StartButton");
-        startText = BindGet<Text>("StartText");
+        menuBtn = BindGet<Button>("MenuBtn");
+        rankBtn = BindGet<Button>("RankBtn");
+        shopBtn = BindGet<Button>("ShopBtn");
+        collectionBtn = BindGet<Button>("CollectionBtn");
     }
 }

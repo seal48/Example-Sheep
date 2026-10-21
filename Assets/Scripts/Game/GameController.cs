@@ -299,7 +299,9 @@ public class GameController : MonoBehaviour
             new ProcedureInitPlatform(),
             new ProcedureLogin(),
             new ProcedureEnterLobby(),
-            new ProcedureLobby());
+            new ProcedureLobby(),
+            new ProcedureEnterGame(),
+            new ProcedureGame());
     }
 
     /// <summary>
@@ -383,6 +385,10 @@ public class GameController : MonoBehaviour
 
     private void Update()
     {
+        // F1：打开 GM 测试面板（任何场景可用）
+        if (Input.GetKeyDown(KeyCode.F1) && ui != null && ui.IsInitialized)
+            ui.Open("GmPanel");
+
         // 把文件缓冲按间隔落盘
         GameLog.Tick(Time.deltaTime, Time.unscaledDeltaTime);
 
@@ -437,6 +443,15 @@ public class GameController : MonoBehaviour
             business = null;
         }
 
+        // UI 必须在对象池之前关：面板 OnClose 会把牌 / 槽位这些池化视图还给池。
+        // 池先拆的话，归还静默失败，这些实例就成了孤儿留在场景里
+        // （退出播放模式时 Unity 报「Some objects were not cleaned up when closing the scene」）。
+        if (ui != null)
+        {
+            ui.Shutdown();
+            ui = null;
+        }
+
         if (pool != null)
         {
             pool.Shutdown();
@@ -453,12 +468,6 @@ public class GameController : MonoBehaviour
         {
             serverSelect.Shutdown();
             serverSelect = null;
-        }
-
-        if (ui != null)
-        {
-            ui.Shutdown();
-            ui = null;
         }
 
         if (spriteAtlases != null)

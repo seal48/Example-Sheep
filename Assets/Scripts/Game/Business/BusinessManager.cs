@@ -39,6 +39,7 @@ namespace GameFramework.Business
 
             systems.Add(new PlayerSystem(Player));
             systems.Add(new BagSystem(Player));
+            systems.Add(new PetSystem(Player));
 
             for (int i = 0; i < systems.Count; i++)
                 systems[i].Bind(Hub, events);

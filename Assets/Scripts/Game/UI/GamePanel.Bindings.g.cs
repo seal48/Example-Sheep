@@ -11,7 +11,7 @@ public partial class GamePanel
 {
     /// <summary>节点：Background</summary>
     public Image background;
-    /// <summary>节点：TitleText</summary>
+    /// <summary>节点：titleText</summary>
     public Text titleText;
     /// <summary>节点：BackButton</summary>
     public Button backButton;
@@ -46,7 +46,7 @@ public partial class GamePanel
     protected override void BindNodes()
     {
         background = BindGet<Image>("Background");
-        titleText = BindGet<Text>("TitleText");
+        titleText = BindGet<Text>("titleText");
         backButton = BindGet<Button>("BackButton");
         backText = BindGet<Text>("BackText");
         boardRoot = BindGet<Image>("BoardRoot");

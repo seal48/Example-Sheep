@@ -11,6 +11,7 @@ namespace GameFramework.Business
     {
         private readonly Dictionary<string, long> attributes = new Dictionary<string, long>();
         private readonly Dictionary<string, int> bag = new Dictionary<string, int>();
+        private readonly HashSet<int> pets = new HashSet<int>();
 
         public string PlayerId { get; private set; }
 
@@ -33,6 +34,15 @@ namespace GameFramework.Business
         public IReadOnlyDictionary<string, int> Bag { get { return bag; } }
 
         public int BagKinds { get { return bag.Count; } }
+
+        /// <summary>账号收藏的宠物 id 集合（图鉴用，独立于背包）。</summary>
+        public IReadOnlyCollection<int> Pets { get { return pets; } }
+
+        /// <summary>图鉴里已收藏的宠物数量。</summary>
+        public int PetCount { get { return pets.Count; } }
+
+        /// <summary>是否已收藏某只宠物（SheepPet 表 Id）。</summary>
+        public bool HasPet(int petId) { return pets.Contains(petId); }
 
         /// <summary>用全量快照覆盖本地数据。</summary>
         public void ApplyInfo(PlayerInfoPush push)
@@ -74,6 +84,36 @@ namespace GameFramework.Business
             else bag[push.ItemId] = push.Count;
         }
 
+        /// <summary>用全量宠物收藏覆盖本地数据（登录同步）。</summary>
+        public void ApplyPets(PetListPush push)
+        {
+            if (push == null) return;
+
+            PushCount++;
+            Version = push.Version;
+
+            pets.Clear();
+            if (push.Pets != null)
+            {
+                for (int i = 0; i < push.Pets.Count; i++)
+                {
+                    if (push.Pets[i] > 0) pets.Add(push.Pets[i]);
+                }
+            }
+        }
+
+        /// <summary>应用一条宠物收藏增量。</summary>
+        public void ApplyPet(PetChangedPush push)
+        {
+            if (push == null || push.PetId <= 0) return;
+
+            PushCount++;
+            Version = push.Version;
+
+            if (push.Added) pets.Add(push.PetId);
+            else pets.Remove(push.PetId);
+        }
+
         /// <summary>清空（掉线 / 重新登录）。</summary>
         public void Reset()
         {
@@ -86,6 +126,7 @@ namespace GameFramework.Business
             PushCount = 0;
             attributes.Clear();
             bag.Clear();
+            pets.Clear();
         }
     }
 }

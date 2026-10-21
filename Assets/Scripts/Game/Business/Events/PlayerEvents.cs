@@ -41,4 +41,25 @@ namespace GameFramework.Business
     {
         public string Reason;
     }
+
+    /// <summary>宠物收藏全量变了（登录同步 / 后台整体覆盖）。图鉴界面 Listen 它来整体刷新。</summary>
+    public struct PetListChangedEvent : IGameEvent
+    {
+        public long Version;
+    }
+
+    /// <summary>某一只宠物的收藏状态变了（获得 / 移除）。图鉴界面 Listen 它做局部刷新。</summary>
+    public struct PetChangedEvent : IGameEvent
+    {
+        /// <summary>变化的宠物 id（SheepPet 表 Id）。</summary>
+        public int PetId;
+
+        /// <summary>true=获得了这一只，false=移除了。</summary>
+        public bool Added;
+
+        /// <summary>收藏总数（变化之后）。</summary>
+        public int Total;
+
+        public long Version;
+    }
 }
