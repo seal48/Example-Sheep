@@ -240,9 +240,6 @@ namespace GameFramework.RedDot
 
         private void MarkDirty(Node node)
         {
-            // 整个子树标脏：叶子条件才能重跑（否则父节点聚合用的是叶子的旧缓存）
-            MarkSubtreeDirty(node);
-
             // 沿祖先链标记并刷新
             for (Node n = node; n != null; n = n.Parent)
             {
@@ -251,15 +248,6 @@ namespace GameFramework.RedDot
             }
             RefreshNode(node);
             if (NodeChanged != null) NodeChanged(node.Id);
-        }
-
-        /// <summary>把节点及其所有子孙节点标脏（叶子条件重算的前提）。</summary>
-        private void MarkSubtreeDirty(Node node)
-        {
-            if (node == null) return;
-            node.Dirty = true;
-            for (int i = 0; i < node.Children.Count; i++)
-                MarkSubtreeDirty(node.Children[i]);
         }
 
         private void RefreshIfDirty(Node node)
