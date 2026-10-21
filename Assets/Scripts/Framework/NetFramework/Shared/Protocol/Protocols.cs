@@ -39,6 +39,24 @@ namespace GameFramework.Net.Protocol
         // 客户端由 ProtocolHub 收下来，再分给各个 System 处理
         PlayerInfoPush,
         BagChangedPush,
+        PetListPush,
+        PetChangedPush,
+
+        // ===== GM 工具（客户端测试面板 → 服务端执行）=====
+        GmRequest,
+        GmResponse,
+
+        // ===== 通关奖励（客户端通关最后一关 → 服务端随机给一只未拥有的羊）=====
+        PetRewardRequest,
+        PetRewardResponse,
+
+        // ===== 星球排行（按羊数量排名，客户端拉前 10 名）=====
+        PlanetRankRequest,
+        PlanetRankResponse,
+
+        // ===== 商店（购买商品）=====
+        ShopBuyRequest,
+        ShopBuyResponse,
     }
 
     /// <summary>
@@ -68,6 +86,24 @@ namespace GameFramework.Net.Protocol
             // ---- 业务协议：服务端主动推送 ----
             { ProtocolId.PlayerInfoPush, "player.info.push" },
             { ProtocolId.BagChangedPush, "player.bag.changed" },
+            { ProtocolId.PetListPush, "player.pets.push" },
+            { ProtocolId.PetChangedPush, "player.pets.changed" },
+
+            // ---- GM 工具 ----
+            { ProtocolId.GmRequest, "gm.request" },
+            { ProtocolId.GmResponse, "gm.response" },
+
+            // ---- 通关奖励 ----
+            { ProtocolId.PetRewardRequest, "pet.reward.request" },
+            { ProtocolId.PetRewardResponse, "pet.reward.response" },
+
+            // ---- 星球排行 ----
+            { ProtocolId.PlanetRankRequest, "planet.rank.request" },
+            { ProtocolId.PlanetRankResponse, "planet.rank.response" },
+
+            // ---- 商店 ----
+            { ProtocolId.ShopBuyRequest, "shop.buy.request" },
+            { ProtocolId.ShopBuyResponse, "shop.buy.response" },
         };
 
         private static readonly Dictionary<string, ProtocolId> Ids = BuildReverseTable();

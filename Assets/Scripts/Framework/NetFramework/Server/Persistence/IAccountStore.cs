@@ -51,5 +51,19 @@ namespace GameFramework.Net.Server.Persistence
 
         /// <summary>把某道具的数量设成指定值（0 表示删除）。</summary>
         bool SetItemCount(string account, string itemId, int count, string extraJson = null);
+
+        // ---------- 宠物（账号收藏，独立于背包）----------
+
+        /// <summary>该账号收藏的宠物 id 列表（SheepPet 表 Id，如 1001~1004）。</summary>
+        IReadOnlyList<int> GetPets(string account);
+
+        /// <summary>加一只宠物（已收藏时返回 true 不重复加）。</summary>
+        bool AddPet(string account, int petId);
+
+        /// <summary>删一只宠物（没收藏时返回 true 不报错）。</summary>
+        bool RemovePet(string account, int petId);
+
+        /// <summary>整体覆盖宠物收藏列表。</summary>
+        bool SetPets(string account, IReadOnlyList<int> petIds);
     }
 }

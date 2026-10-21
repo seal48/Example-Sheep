@@ -41,6 +41,13 @@ namespace GameFramework.Net.Server.Persistence
 
         /// <summary>背包里的道具。</summary>
         public List<ItemStack> Items = new List<ItemStack>();
+
+        /// <summary>
+        /// 账号收藏的宠物（图鉴用）。独立的字段，不混进背包 Items ——
+        /// 每种"道具类型"都有自己的字段，方便取、也不互相污染。
+        /// 元素是宠物配置表 SheepPet 的 Id（如 1001~1004 四只羊）。
+        /// </summary>
+        public List<int> Pets = new List<int>();
     }
 
     /// <summary>一格道具：道具 id + 数量 + 自定义附加信息（附魔/耐久等）。</summary>

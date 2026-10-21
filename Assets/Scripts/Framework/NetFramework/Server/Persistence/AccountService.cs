@@ -290,6 +290,24 @@ namespace GameFramework.Net.Server.Persistence
             return false;
         }
 
+        // ---------------- 宠物（账号收藏，独立于背包）----------------
+
+        /// <summary>该账号收藏的宠物 id 列表（SheepPet 表 Id，如 1001~1004 四只羊）。</summary>
+        public IReadOnlyList<int> GetPets(string account)
+            => _store.GetPets(AccountNameRules.Normalize(account));
+
+        /// <summary>加一只宠物（已收藏时不重复加，仍返回 true）。</summary>
+        public bool AddPet(string account, int petId)
+            => _store.AddPet(AccountNameRules.Normalize(account), petId);
+
+        /// <summary>删一只宠物（没收藏时也算成功）。</summary>
+        public bool RemovePet(string account, int petId)
+            => _store.RemovePet(AccountNameRules.Normalize(account), petId);
+
+        /// <summary>整体覆盖宠物收藏（GM / 后台用）。</summary>
+        public bool SetPets(string account, IReadOnlyList<int> petIds)
+            => _store.SetPets(AccountNameRules.Normalize(account), petIds);
+
         // ---------------- 内部 ----------------
 
         private bool Modify(string account, Action<PlayerData> change)

@@ -108,6 +108,64 @@ namespace GameFramework.Net.Server
             return Send(normalized, ProtocolId.BagChangedPush, payload);
         }
 
+        /// <summary>
+        /// 把该账号的背包**全量**推给在线客户端（每个道具一条 BagChangedPush）。
+        /// 登录时调用：客户端靠它拿到金币/钻石等已有数量。
+        /// </summary>
+        public int PushBag(string account)
+        {
+            var normalized = AccountNameRules.Normalize(account);
+
+            AccountRecord record;
+            if (!accounts.TryGet(normalized, out record) || record == null)
+                return 0;
+
+            int sent = 0;
+            var items = record.Player != null ? record.Player.Items : null;
+            if (items != null)
+            {
+                for (int i = 0; i < items.Count; i++)
+                {
+                    ItemStack stack = items[i];
+                    if (stack == null || stack.Count <= 0) continue;
+                    sent += PushBagChanged(normalized, stack.ItemId, stack.Count, 0, false);
+                }
+            }
+            return sent;
+        }
+
+        /// <summary>推一份宠物收藏全量（图鉴用，登录同步 / 后台改完推送）。</summary>
+        public int PushPetList(string account)
+        {
+            var normalized = AccountNameRules.Normalize(account);
+
+            var payload = new PetListPush
+            {
+                Pets = new List<int>(accounts.GetPets(normalized)),
+                Version = Interlocked.Increment(ref version),
+                ServerTimeMs = NowMs()
+            };
+
+            return Send(normalized, ProtocolId.PetListPush, payload);
+        }
+
+        /// <summary>推一条宠物收藏变化（增量）。</summary>
+        public int PushPetChanged(string account, int petId, bool added)
+        {
+            var normalized = AccountNameRules.Normalize(account);
+
+            var payload = new PetChangedPush
+            {
+                PetId = petId,
+                Added = added,
+                Total = accounts.GetPets(normalized).Count,
+                Version = Interlocked.Increment(ref version),
+                ServerTimeMs = NowMs()
+            };
+
+            return Send(normalized, ProtocolId.PetChangedPush, payload);
+        }
+
         // ---------------- 改数据 + 自动推送 ----------------
 
         public bool SetLevel(string account, int level)
@@ -151,6 +209,22 @@ namespace GameFramework.Net.Server
             return true;
         }
 
+        /// <summary>给账号加一只宠物并自动推送（图鉴立即更新）。</summary>
+        public bool AddPet(string account, int petId)
+        {
+            if (!accounts.AddPet(account, petId)) return false;
+            PushIfNeeded(account, () => PushPetChanged(account, petId, true));
+            return true;
+        }
+
+        /// <summary>移除一只宠物并自动推送。</summary>
+        public bool RemovePet(string account, int petId)
+        {
+            if (!accounts.RemovePet(account, petId)) return false;
+            PushIfNeeded(account, () => PushPetChanged(account, petId, false));
+            return true;
+        }
+
         // ---------------- 内部 ----------------
 
         private void OnClientLoggedIn(IMessagePeer peer)
@@ -161,6 +235,8 @@ namespace GameFramework.Net.Server
             if (session == null || !session.LoggedIn) return;
 
             PushPlayerInfo(session.Account);
+            PushPetList(session.Account);
+            PushBag(session.Account);   // 背包全量（金币/钻石等已有数量）
         }
 
         private void PushIfNeeded(string account, Action push)

@@ -250,6 +250,64 @@ namespace GameFramework.Net.Server.Persistence
             }
         }
 
+        // ---------- 宠物（账号收藏，独立于背包）----------
+
+        public IReadOnlyList<int> GetPets(string account)
+        {
+            var pets = new List<int>();
+            lock (_lock)
+            {
+                if (string.IsNullOrEmpty(account) || !_accounts.TryGetValue(account, out var record)) return pets;
+
+                var source = record.Player?.Pets;
+                if (source != null) pets.AddRange(source);
+            }
+            return pets;
+        }
+
+        public bool AddPet(string account, int petId)
+        {
+            if (petId <= 0) return false;
+
+            lock (_lock)
+            {
+                if (!TryGetMutable(account, out var record)) return false;
+
+                var pets = record.Player.Pets;
+                if (pets == null) record.Player.Pets = pets = new List<int>();
+                if (!pets.Contains(petId)) pets.Add(petId);
+
+                Save();
+                return true;
+            }
+        }
+
+        public bool RemovePet(string account, int petId)
+        {
+            lock (_lock)
+            {
+                if (!TryGetMutable(account, out var record)) return false;
+
+                var pets = record.Player.Pets;
+                if (pets != null) pets.Remove(petId);
+
+                Save();
+                return true;
+            }
+        }
+
+        public bool SetPets(string account, IReadOnlyList<int> petIds)
+        {
+            lock (_lock)
+            {
+                if (!TryGetMutable(account, out var record)) return false;
+
+                record.Player.Pets = petIds != null ? new List<int>(petIds) : new List<int>();
+                Save();
+                return true;
+            }
+        }
+
         // ---------- 内部 ----------
 
         private bool TryGetMutable(string account, out AccountRecord record)
@@ -262,6 +320,7 @@ namespace GameFramework.Net.Server.Persistence
             if (record.Player.Items == null) record.Player.Items = new List<ItemStack>();
             if (record.Player.Attributes == null)
                 record.Player.Attributes = new Dictionary<string, long>(StringComparer.Ordinal);
+            if (record.Player.Pets == null) record.Player.Pets = new List<int>();
 
             return true;
         }

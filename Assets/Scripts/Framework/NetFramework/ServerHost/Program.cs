@@ -116,6 +116,30 @@ namespace GameFramework.ServerHost
             push.Pushed += (account, protocol, count) =>
                 logger.Info($"[推送] {protocol} → 账号 '{account}' 的 {count} 条连接");
 
+            // GM 协议：客户端测试面板发 gm.request，服务端用当前登录账号执行命令并回 gm.response
+            server.Router.RegisterOrReplace(ProtocolId.GmRequest, (message, peer) =>
+            {
+                try
+                {
+                    var request = message.Deserialize<GmRequest>(peer.Serializer);
+                    var session = PeerSession.Get(peer);
+                    if (session == null || !session.LoggedIn || string.IsNullOrEmpty(session.Account))
+                    {
+                        peer.Send(ProtocolId.GmResponse, new GmResponse { Success = false, Message = "未登录，不能执行 GM 命令" });
+                        return;
+                    }
+
+                    var result = ExecuteGm(server, push, session.Account, request?.Command, logger);
+                    logger.Info($"[GM] 账号 '{session.Account}' 执行 '{request?.Command}' → {result.Success} {result.Message}");
+                    peer.Send(ProtocolId.GmResponse, result);
+                }
+                catch (Exception ex)
+                {
+                    logger.Error($"[GM] 处理异常：{ex.Message}");
+                    peer.Send(ProtocolId.GmResponse, new GmResponse { Success = false, Message = "服务器处理 GM 命令异常：" + ex.Message });
+                }
+            });
+
             if (devAccount)
             {
                 if (server.Accounts.Exists("dev"))
@@ -127,7 +151,85 @@ namespace GameFramework.ServerHost
                     server.AddAccount("dev", "dev", "player-dev");
                     logger.Info("已创建开发账号：dev / dev（本地开发用；正式部署请换成自己的 ILoginValidator）");
                 }
+
+                // 星球排行测试用户：demo1~demo4 分别有 1~4 只羊（只为本地开发方便）
+                SeedPlanetDemoAccounts(server, logger);
             }
+
+            // 通关奖励：客户端通关最后一关 → 服务端随机给一只**未拥有**的羊（羊唯一，不重复）
+            var serverTables = LoadServerTables(logger);
+            server.Router.RegisterOrReplace(ProtocolId.PetRewardRequest, (message, peer) =>
+            {
+                try
+                {
+                    var request = message.Deserialize<PetRewardRequest>(peer.Serializer);
+                    var session = PeerSession.Get(peer);
+                    if (session == null || !session.LoggedIn || string.IsNullOrEmpty(session.Account))
+                    {
+                        peer.Send(ProtocolId.PetRewardResponse, new PetRewardResponse { Success = false, Message = "未登录" });
+                        return;
+                    }
+
+                    var result = GrantPetReward(server, push, serverTables, session.Account, request != null ? request.LevelId : 0);
+                    logger.Info($"[奖励] 账号 '{session.Account}' 通关关卡 {request?.LevelId} → "
+                                + (result.AllOwned ? "已集齐全部羊" : (result.Success ? "发放羊 " + result.PetId : "未发放：" + result.Message)));
+                    peer.Send(ProtocolId.PetRewardResponse, result);
+                }
+                catch (Exception ex)
+                {
+                    logger.Error($"[奖励] 处理异常：{ex.Message}");
+                    peer.Send(ProtocolId.PetRewardResponse, new PetRewardResponse { Success = false, Message = "服务器处理奖励异常：" + ex.Message });
+                }
+            });
+
+            // 星球排行：按羊数量排前 10，自己的星球也包含在内
+            server.Router.RegisterOrReplace(ProtocolId.PlanetRankRequest, (message, peer) =>
+            {
+                try
+                {
+                    var request = message.Deserialize<PlanetRankRequest>(peer.Serializer);
+                    var session = PeerSession.Get(peer);
+
+                    if (session == null || !session.LoggedIn || string.IsNullOrEmpty(session.Account))
+                    {
+                        peer.Send(ProtocolId.PlanetRankResponse, new PlanetRankResponse { Success = false, Message = "未登录" });
+                        return;
+                    }
+
+                    var response = BuildPlanetRank(server, session.Account, request != null ? request.TopN : 0);
+                    logger.Info($"[星球] 账号 '{session.Account}' 拉取排行 → 返回 {response.Entries.Count} 个星球");
+                    peer.Send(ProtocolId.PlanetRankResponse, response);
+                }
+                catch (Exception ex)
+                {
+                    logger.Error($"[星球] 处理异常：{ex.Message}");
+                    peer.Send(ProtocolId.PlanetRankResponse, new PlanetRankResponse { Success = false, Message = "服务器处理排行异常：" + ex.Message });
+                }
+            });
+
+            // 商店购买：校验消耗 → 扣费 → 发放商品道具（服务端权威，客户端只发"买哪个"）
+            server.Router.RegisterOrReplace(ProtocolId.ShopBuyRequest, (message, peer) =>
+            {
+                try
+                {
+                    var request = message.Deserialize<ShopBuyRequest>(peer.Serializer);
+                    var session = PeerSession.Get(peer);
+                    if (session == null || !session.LoggedIn || string.IsNullOrEmpty(session.Account))
+                    {
+                        peer.Send(ProtocolId.ShopBuyResponse, new ShopBuyResponse { Success = false, Message = "未登录" });
+                        return;
+                    }
+
+                    var result = BuyShopItem(server, push, serverTables, session.Account, request != null ? request.ShopItemId : 0, logger);
+                    logger.Info($"[商店] 账号 '{session.Account}' 购买商品 {request?.ShopItemId} → {result.Success} {result.Message}");
+                    peer.Send(ProtocolId.ShopBuyResponse, result);
+                }
+                catch (Exception ex)
+                {
+                    logger.Error($"[商店] 处理异常：{ex.Message}");
+                    peer.Send(ProtocolId.ShopBuyResponse, new ShopBuyResponse { Success = false, Message = "服务器处理购买异常：" + ex.Message });
+                }
+            });
 
             if (selfTest)
             {
@@ -153,6 +255,8 @@ namespace GameFramework.ServerHost
             Console.WriteLine("  setattr <账号> <属性名> <值>       改属性（力量/敏捷/智力…，改完自动推送）");
             Console.WriteLine("  additem <账号> <道具id> <数量>     加道具（改完自动推送）");
             Console.WriteLine("  delitem <账号> <道具id> <数量>     扣道具（改完自动推送）");
+            Console.WriteLine("  addpet <账号> <宠物id>             加宠物收藏（图鉴，1001~1004 四只羊，改完自动推送）");
+            Console.WriteLine("  delpet <账号> <宠物id>             移除宠物收藏（改完自动推送）");
             Console.WriteLine("  push <账号>                      手动推一次玩家全量数据");
             Console.WriteLine("  quit");
             Console.WriteLine();
@@ -376,6 +480,18 @@ namespace GameFramework.ServerHost
                     else logger.Warn("用法：delitem <账号> <道具id> <数量>");
                     break;
 
+                case "addpet":
+                    if (parts.Length >= 3 && int.TryParse(parts[2], out var petId))
+                        logger.Info(push.AddPet(parts[1], petId) ? "已添加宠物并推送（图鉴刷新）" : "失败（账号不存在？）");
+                    else logger.Warn("用法：addpet <账号> <宠物id>（1001~1004 四只羊）");
+                    break;
+
+                case "delpet":
+                    if (parts.Length >= 3 && int.TryParse(parts[2], out var removePetId))
+                        logger.Info(push.RemovePet(parts[1], removePetId) ? "已移除宠物并推送" : "失败（账号不存在？）");
+                    else logger.Warn("用法：delpet <账号> <宠物id>");
+                    break;
+
                 case "push":
                     if (parts.Length >= 2)
                         logger.Info($"已推送玩家数据，命中 {push.PushPlayerInfo(parts[1])} 条连接");
@@ -385,6 +501,335 @@ namespace GameFramework.ServerHost
                 default:
                     logger.Warn($"未知命令：{command}");
                     break;
+            }
+        }
+
+        // ============================== 星球排行 ==============================
+
+        /// <summary>
+        /// 星球排行：只统计**至少有 1 只羊**的账号（没羊的星球不参与、也不显示），
+        /// 按羊数量从多到少排，取前 topN（默认 10）名；
+        /// 自己的星球如果在羊星球里（且不在前 N 名）就追加在末尾，带真实名次。
+        /// </summary>
+        private static PlanetRankResponse BuildPlanetRank(GameServer server, string selfAccount, int topN)
+        {
+            var response = new PlanetRankResponse { Success = true, Entries = new List<PlanetRankEntry>() };
+
+            if (topN <= 0) topN = 10;
+
+            IReadOnlyList<AccountRecord> records = server.Accounts.List(10000);
+            if (records == null || records.Count == 0) return response;
+
+            // 每个账号的羊
+            var all = new List<PlanetRankEntry>(records.Count);
+            for (int i = 0; i < records.Count; i++)
+            {
+                AccountRecord record = records[i];
+                if (record == null || string.IsNullOrEmpty(record.Account)) continue;
+
+                IReadOnlyList<int> pets = server.Accounts.GetPets(record.Account);
+
+                var entry = new PlanetRankEntry
+                {
+                    PlayerId = string.IsNullOrEmpty(record.PlayerId) ? record.Account : record.PlayerId,
+                    // 服务端推送里玩家名就是账号（PlayerPushService 同口径）
+                    PlayerName = record.Account,
+                    Pets = new List<int>(),
+                    IsSelf = string.Equals(record.Account, selfAccount, StringComparison.Ordinal)
+                };
+
+                if (pets != null)
+                {
+                    for (int k = 0; k < pets.Count; k++)
+                        if (pets[k] > 0) entry.Pets.Add(pets[k]);
+                }
+                entry.PetCount = entry.Pets.Count;
+
+                // 没有羊的星球不参与排行、也不显示（没统计意义）
+                if (entry.PetCount <= 0) continue;
+
+                all.Add(entry);
+            }
+
+            // 按羊数降序；羊数相同按名字排（保证顺序稳定）
+            all.Sort((a, b) =>
+            {
+                int c = b.PetCount.CompareTo(a.PetCount);
+                if (c != 0) return c;
+                return string.CompareOrdinal(a.PlayerName, b.PlayerName);
+            });
+
+            for (int i = 0; i < all.Count; i++)
+                all[i].Rank = i + 1;
+
+            PlanetRankEntry self = null;
+            for (int i = 0; i < all.Count; i++)
+                if (all[i].IsSelf) { self = all[i]; break; }
+
+            // 前 N 名
+            int take = Mathf_Min(topN, all.Count);
+            for (int i = 0; i < take; i++)
+                response.Entries.Add(all[i]);
+
+            // 自己不在前 N 名 → 追加（保证自己的星球也能看到）
+            if (self != null && self.Rank > take)
+                response.Entries.Add(self);
+
+            return response;
+        }
+
+        /// <summary>不引入 UnityEngine：本地取小值。</summary>
+        private static int Mathf_Min(int a, int b) { return a < b ? a : b; }
+
+        /// <summary>
+        /// 星球排行的本地测试账号：demo1~demo4，分别有 1/2/3/4 只羊（羊 id 1001 起）。
+        /// 账号已存在就跳过（不覆盖真实数据）。
+        /// </summary>
+        private static void SeedPlanetDemoAccounts(GameServer server, INetLogger logger)
+        {
+            int created = 0;
+            for (int i = 1; i <= 4; i++)
+            {
+                string account = "demo" + i;
+                if (server.Accounts.Exists(account)) continue;
+
+                server.AddAccount(account, "demo1234", "player-demo" + i);
+                for (int p = 0; p < i; p++)
+                    server.Accounts.AddPet(account, 1001 + p);   // demo1: 1001；demo2: 1001~1002…
+                created++;
+            }
+
+            if (created > 0)
+                logger.Info($"[星球] 已创建 {created} 个测试账号（demo1~demo4，密码 demo1234，羊 1~4 只）");
+        }
+
+        // ============================== 通关奖励 ==============================
+
+        /// <summary>服务端用到的配置表：羊 Id 列表 + 关卡最大 Id + 商店商品。</summary>
+        private sealed class ServerTables
+        {
+            public List<int> PetIds = new List<int>();
+            public int MaxLevelId;
+            public bool Ready;
+            /// <summary>商店商品（Id → 行）。</summary>
+            public Dictionary<int, ShopItemConfig> ShopItems = new Dictionary<int, ShopItemConfig>();
+        }
+
+        /// <summary>加载 ConfigDataServer 里的 SheepPet / SheepLevel（Id 是分端字段，服务端有）。</summary>
+        private static ServerTables LoadServerTables(INetLogger logger)
+        {
+            var tables = new ServerTables();
+
+            try
+            {
+                string directory = ResolveConfigDirectory("ConfigDataServer", logger);
+                if (directory == null)
+                {
+                    logger.Warn("[奖励] 找不到 ConfigDataServer 目录，通关奖励不可用（只会记录日志）");
+                    return tables;
+                }
+
+                ConfigDatabase database = ConfigFileLoader.Load(directory);
+
+                if (database.SheepPet != null && database.SheepPet.Rows != null)
+                {
+                    for (int i = 0; i < database.SheepPet.Rows.Count; i++)
+                    {
+                        var row = database.SheepPet.Rows[i];
+                        if (row != null) tables.PetIds.Add(row.Id);
+                    }
+                    tables.PetIds.Sort();
+                }
+
+                if (database.SheepLevel != null && database.SheepLevel.Rows != null)
+                {
+                    for (int i = 0; i < database.SheepLevel.Rows.Count; i++)
+                    {
+                        var row = database.SheepLevel.Rows[i];
+                        if (row != null && row.Id > tables.MaxLevelId) tables.MaxLevelId = row.Id;
+                    }
+                }
+
+                if (database.ShopItem != null && database.ShopItem.Rows != null)
+                {
+                    for (int i = 0; i < database.ShopItem.Rows.Count; i++)
+                    {
+                        var row = database.ShopItem.Rows[i];
+                        if (row != null) tables.ShopItems[row.Id] = row;
+                    }
+                }
+
+                tables.Ready = tables.PetIds.Count > 0;
+                logger.Info($"[奖励] 已加载配置表：羊 {tables.PetIds.Count} 只，最后一关 Id = {tables.MaxLevelId}，商品 {tables.ShopItems.Count} 个");
+            }
+            catch (Exception ex)
+            {
+                logger.Warn("[奖励] 加载配置表失败：" + ex.Message);
+            }
+
+            return tables;
+        }
+
+        /// <summary>随机数（多线程共用一个，加锁保证安全）。</summary>
+        private static readonly System.Random RewardRng = new System.Random();
+
+        /// <summary>
+        /// 发通关奖励：校验"必须是最后一关"，然后从羊表里随机挑一只**玩家还没拥有**的发放。
+        /// 羊唯一 —— 已拥有的不会再给；全部集齐时返回 AllOwned。
+        /// </summary>
+        private static PetRewardResponse GrantPetReward(GameServer server, PlayerPushService push, ServerTables tables, string account, int levelId)
+        {
+            if (tables == null || !tables.Ready)
+                return new PetRewardResponse { Success = false, Message = "服务器没有加载奖励配置表" };
+
+            // 只有通关最后一关才算（第一关、中途退出、失败都不会走到这里）
+            if (tables.MaxLevelId > 0 && levelId != tables.MaxLevelId)
+                return new PetRewardResponse { Success = false, Message = $"不是最后一关（{levelId} != {tables.MaxLevelId}），不发奖励" };
+
+            // 还没有拥有的羊
+            var owned = new HashSet<int>(server.Accounts.GetPets(account));
+            var candidates = new List<int>(tables.PetIds.Count);
+            for (int i = 0; i < tables.PetIds.Count; i++)
+            {
+                int id = tables.PetIds[i];
+                if (!owned.Contains(id)) candidates.Add(id);
+            }
+
+            if (candidates.Count == 0)
+                return new PetRewardResponse { Success = false, AllOwned = true, Message = "已集齐全部羊" };
+
+            int petId;
+            lock (RewardRng)
+            {
+                petId = candidates[RewardRng.Next(candidates.Count)];
+            }
+
+            if (!push.AddPet(account, petId))
+                return new PetRewardResponse { Success = false, Message = "发放失败（账号不存在？）" };
+
+            return new PetRewardResponse { Success = true, PetId = petId, Message = "已发放" };
+        }
+
+        /// <summary>
+        /// 购买商品：查商品表 → 校验消耗（不够直接失败）→ 扣消耗 → 发商品道具。
+        /// 免费商品（CostItemId/CostNum 为 0）不扣费。
+        /// </summary>
+        private static ShopBuyResponse BuyShopItem(GameServer server, PlayerPushService push, ServerTables tables,
+            string account, int shopItemId, INetLogger logger)
+        {
+            if (tables == null || tables.ShopItems == null || tables.ShopItems.Count == 0)
+                return new ShopBuyResponse { Success = false, ShopItemId = shopItemId, Message = "服务器没有加载商品表" };
+
+            ShopItemConfig cfg;
+            if (!tables.ShopItems.TryGetValue(shopItemId, out cfg) || cfg == null)
+                return new ShopBuyResponse { Success = false, ShopItemId = shopItemId, Message = "商品不存在：" + shopItemId };
+
+            string productId = cfg.ItemId.ToString();
+            int num = cfg.Num > 0 ? cfg.Num : 1;
+
+            bool needCost = cfg.CostItemId > 0 && cfg.CostNum > 0;
+            string costId = cfg.CostItemId.ToString();
+
+            if (needCost)
+            {
+                int have = server.Accounts.GetItemCount(account, costId);
+                if (have < cfg.CostNum)
+                    return new ShopBuyResponse
+                    {
+                        Success = false,
+                        ShopItemId = shopItemId,
+                        Message = $"消耗不足（需要 {cfg.CostNum}，当前 {have}）"
+                    };
+            }
+
+            // 先扣消耗，再发商品；发商品失败就把消耗退回去
+            if (needCost && !push.RemoveItem(account, costId, cfg.CostNum))
+                return new ShopBuyResponse { Success = false, ShopItemId = shopItemId, Message = "扣除消耗失败" };
+
+            if (!push.AddItem(account, productId, num))
+            {
+                if (needCost) push.AddItem(account, costId, cfg.CostNum);
+                return new ShopBuyResponse { Success = false, ShopItemId = shopItemId, Message = "发放商品失败" };
+            }
+
+            return new ShopBuyResponse { Success = true, ShopItemId = shopItemId, Message = "购买成功" };
+        }
+
+        /// <summary>
+        /// 执行客户端 GM 面板发来的命令。账号从登录会话取，命令不用带账号。
+        /// 支持：additem / delitem / addpet / delpet / gold / setlevel / setattr / push。
+        /// </summary>
+        private static GmResponse ExecuteGm(GameServer server, PlayerPushService push, string account, string commandLine, INetLogger logger)
+        {
+            if (string.IsNullOrWhiteSpace(commandLine))
+                return new GmResponse { Success = false, Message = "命令为空" };
+
+            string[] parts = commandLine.Trim().Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+            string command = parts[0].ToLowerInvariant();
+
+            switch (command)
+            {
+                case "additem":
+                    if (parts.Length >= 3 && int.TryParse(parts[2], out var addCount))
+                    {
+                        bool ok = push.AddItem(account, parts[1], addCount);
+                        return new GmResponse { Success = ok, Message = ok ? "已添加并推送" : "失败（账号不存在？）" };
+                    }
+                    return new GmResponse { Success = false, Message = "用法：additem <道具id> <数量>" };
+
+                case "delitem":
+                    if (parts.Length >= 3 && int.TryParse(parts[2], out var removeCount))
+                    {
+                        bool ok = push.RemoveItem(account, parts[1], removeCount);
+                        return new GmResponse { Success = ok, Message = ok ? "已扣除并推送" : "失败（数量不足或账号不存在）" };
+                    }
+                    return new GmResponse { Success = false, Message = "用法：delitem <道具id> <数量>" };
+
+                case "addpet":
+                    if (parts.Length >= 2 && int.TryParse(parts[1], out var petId))
+                    {
+                        bool ok = push.AddPet(account, petId);
+                        return new GmResponse { Success = ok, Message = ok ? "已添加宠物并推送（图鉴刷新）" : "失败（账号不存在？）" };
+                    }
+                    return new GmResponse { Success = false, Message = "用法：addpet <宠物id>（1001~1004 四只羊）" };
+
+                case "delpet":
+                    if (parts.Length >= 2 && int.TryParse(parts[1], out var removePetId))
+                    {
+                        bool ok = push.RemovePet(account, removePetId);
+                        return new GmResponse { Success = ok, Message = ok ? "已移除宠物并推送" : "失败（账号不存在？）" };
+                    }
+                    return new GmResponse { Success = false, Message = "用法：delpet <宠物id>" };
+
+                case "gold":
+                    if (parts.Length >= 2 && long.TryParse(parts[1], out var goldDelta))
+                    {
+                        bool ok = push.AddGold(account, goldDelta);
+                        return new GmResponse { Success = ok, Message = ok ? "已修改并推送" : "账号不存在" };
+                    }
+                    return new GmResponse { Success = false, Message = "用法：gold <增减量>" };
+
+                case "setlevel":
+                    if (parts.Length >= 2 && int.TryParse(parts[1], out var level))
+                    {
+                        bool ok = push.SetLevel(account, level);
+                        return new GmResponse { Success = ok, Message = ok ? "已修改并推送" : "账号不存在" };
+                    }
+                    return new GmResponse { Success = false, Message = "用法：setlevel <等级>" };
+
+                case "setattr":
+                    if (parts.Length >= 3 && long.TryParse(parts[2], out var value))
+                    {
+                        bool ok = push.SetAttribute(account, parts[1], value);
+                        return new GmResponse { Success = ok, Message = ok ? "已修改并推送" : "账号不存在" };
+                    }
+                    return new GmResponse { Success = false, Message = "用法：setattr <属性名> <值>" };
+
+                case "push":
+                    return new GmResponse { Success = true, Message = $"已推送，命中 {push.PushPlayerInfo(account)} 条连接" };
+
+                default:
+                    return new GmResponse { Success = false, Message = "未知命令：" + command + "（支持 additem/delitem/addpet/delpet/gold/setlevel/setattr/push）" };
             }
         }
 

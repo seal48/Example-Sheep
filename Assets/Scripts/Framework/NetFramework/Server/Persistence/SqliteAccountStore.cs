@@ -54,6 +54,7 @@ namespace GameFramework.Net.Server.Persistence
             Execute("PRAGMA journal_mode=WAL;");
             Execute("PRAGMA foreign_keys=ON;");
             CreateSchema();
+            MigrateSchema();
 
             _logger.Info($"账号存储（sqlite）已就绪：{path}");
         }
@@ -406,6 +407,67 @@ namespace GameFramework.Net.Server.Persistence
             }
         }
 
+        // ---------- 宠物（账号收藏，独立于背包）----------
+
+        public IReadOnlyList<int> GetPets(string account)
+        {
+            if (string.IsNullOrEmpty(account)) return new List<int>();
+
+            lock (_lock)
+            {
+                if (!Exists(account)) return new List<int>();
+
+                var data = LoadPlayerData(account) ?? new PlayerData();
+                return data.Pets != null ? new List<int>(data.Pets) : new List<int>();
+            }
+        }
+
+        public bool AddPet(string account, int petId)
+        {
+            if (string.IsNullOrEmpty(account) || petId <= 0) return false;
+
+            lock (_lock)
+            {
+                if (!Exists(account)) return false;
+
+                var data = LoadPlayerData(account) ?? new PlayerData();
+                if (data.Pets == null) data.Pets = new List<int>();
+                if (!data.Pets.Contains(petId)) data.Pets.Add(petId);
+
+                return SavePlayerData(account, data);
+            }
+        }
+
+        public bool RemovePet(string account, int petId)
+        {
+            if (string.IsNullOrEmpty(account)) return false;
+
+            lock (_lock)
+            {
+                if (!Exists(account)) return false;
+
+                var data = LoadPlayerData(account) ?? new PlayerData();
+                if (data.Pets != null) data.Pets.Remove(petId);
+
+                return SavePlayerData(account, data);
+            }
+        }
+
+        public bool SetPets(string account, IReadOnlyList<int> petIds)
+        {
+            if (string.IsNullOrEmpty(account)) return false;
+
+            lock (_lock)
+            {
+                if (!Exists(account)) return false;
+
+                var data = LoadPlayerData(account) ?? new PlayerData();
+                data.Pets = petIds != null ? new List<int>(petIds) : new List<int>();
+
+                return SavePlayerData(account, data);
+            }
+        }
+
         // ---------- 内部 ----------
 
         private void CreateSchema()
@@ -426,6 +488,7 @@ CREATE TABLE IF NOT EXISTS player_state (
     exp             INTEGER NOT NULL DEFAULT 0,
     gold            INTEGER NOT NULL DEFAULT 0,
     attributes_json TEXT NOT NULL DEFAULT '{}',
+    pets_json       TEXT NOT NULL DEFAULT '[]',
     FOREIGN KEY (account) REFERENCES accounts(account) ON DELETE CASCADE
 );
 
@@ -443,12 +506,44 @@ CREATE INDEX IF NOT EXISTS idx_player_items_item ON player_items(item_id);
 ");
         }
 
+        // 旧库迁移：player_state 之前没有 pets_json 列（CREATE TABLE IF NOT EXISTS 不会给已存在的表加列），
+        // 检查到缺列就补上。新库在 CreateSchema 里已经带这列，这里不会重复执行。
+        private void MigrateSchema()
+        {
+            try
+            {
+                bool hasPets = false;
+                using (var command = _connection.CreateCommand())
+                {
+                    command.CommandText = "PRAGMA table_info(player_state);";
+                    using (var reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            if (string.Equals(reader.GetString(1), "pets_json", StringComparison.OrdinalIgnoreCase))
+                            {
+                                hasPets = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (!hasPets)
+                    Execute("ALTER TABLE player_state ADD COLUMN pets_json TEXT NOT NULL DEFAULT '[]';");
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("迁移 player_state.pets_json 列失败：" + ex.Message);
+            }
+        }
+
         private PlayerData LoadPlayerData(string account)
         {
             using (var command = _connection.CreateCommand())
             {
                 command.CommandText =
-                    "SELECT level, exp, gold, attributes_json FROM player_state WHERE account = $account LIMIT 1;";
+                    "SELECT level, exp, gold, attributes_json, pets_json FROM player_state WHERE account = $account LIMIT 1;";
                 command.Parameters.AddWithValue("$account", account);
 
                 using (var reader = command.ExecuteReader())
@@ -469,6 +564,16 @@ CREATE INDEX IF NOT EXISTS idx_player_items_item ON player_items(item_id);
                         {
                             data.Attributes = JsonConvert.DeserializeObject<Dictionary<string, long>>(json, JsonSettings)
                                               ?? new Dictionary<string, long>(StringComparer.Ordinal);
+                        }
+                    }
+
+                    if (!reader.IsDBNull(4))
+                    {
+                        var json = reader.GetString(4);
+                        if (!string.IsNullOrEmpty(json))
+                        {
+                            data.Pets = JsonConvert.DeserializeObject<List<int>>(json, JsonSettings)
+                                        ?? new List<int>();
                         }
                     }
 
@@ -510,21 +615,23 @@ CREATE INDEX IF NOT EXISTS idx_player_items_item ON player_items(item_id);
         {
             var attributes = data.Attributes ?? new Dictionary<string, long>(StringComparer.Ordinal);
             var attributesJson = JsonConvert.SerializeObject(attributes, JsonSettings);
+            var petsJson = JsonConvert.SerializeObject(data.Pets ?? new List<int>(), JsonSettings);
 
             using (var command = _connection.CreateCommand())
             {
                 command.Transaction = transaction;
                 command.CommandText =
-                    "INSERT INTO player_state (account, level, exp, gold, attributes_json) " +
-                    "VALUES ($account, $level, $exp, $gold, $attributes) " +
+                    "INSERT INTO player_state (account, level, exp, gold, attributes_json, pets_json) " +
+                    "VALUES ($account, $level, $exp, $gold, $attributes, $pets) " +
                     "ON CONFLICT(account) DO UPDATE SET " +
                     "level = excluded.level, exp = excluded.exp, gold = excluded.gold, " +
-                    "attributes_json = excluded.attributes_json;";
+                    "attributes_json = excluded.attributes_json, pets_json = excluded.pets_json;";
                 command.Parameters.AddWithValue("$account", account);
                 command.Parameters.AddWithValue("$level", data.Level);
                 command.Parameters.AddWithValue("$exp", data.Exp);
                 command.Parameters.AddWithValue("$gold", data.Gold);
                 command.Parameters.AddWithValue("$attributes", attributesJson);
+                command.Parameters.AddWithValue("$pets", petsJson);
                 command.ExecuteNonQuery();
             }
         }

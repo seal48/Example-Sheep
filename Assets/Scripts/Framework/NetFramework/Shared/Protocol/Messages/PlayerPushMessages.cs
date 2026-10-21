@@ -56,4 +56,40 @@ namespace GameFramework.Net.Protocol
 
         public long ServerTimeMs;
     }
+
+    /// <summary>
+    /// 服务端主动推送：账号收藏的宠物全量列表（图鉴用）。
+    /// 登录成功后推一次当"初始同步"；元素是 SheepPet 表 Id（如 1001~1004 四只羊）。
+    /// </summary>
+    [Serializable]
+    public class PetListPush
+    {
+        /// <summary>该账号已收藏的宠物 id 列表。</summary>
+        public List<int> Pets = new List<int>();
+
+        public long Version;
+
+        public long ServerTimeMs;
+    }
+
+    /// <summary>
+    /// 服务端主动推送：宠物收藏变化（增量，只带变化的那一只）。
+    /// Added=true 表示新收藏，Added=false 表示被移除。
+    /// </summary>
+    [Serializable]
+    public class PetChangedPush
+    {
+        /// <summary>变化的宠物 id（SheepPet 表 Id）。</summary>
+        public int PetId;
+
+        /// <summary>true=收藏了这一只，false=移除了。</summary>
+        public bool Added;
+
+        /// <summary>收藏总数（变化之后），图鉴可以用来判断"集齐了几只"。</summary>
+        public int Total;
+
+        public long Version;
+
+        public long ServerTimeMs;
+    }
 }
