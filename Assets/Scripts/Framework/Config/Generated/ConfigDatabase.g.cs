@@ -11,7 +11,7 @@ namespace GameFramework.Config
     public sealed partial class ConfigDatabase
     {
         /// <summary>所有表的文件名（不含扩展名），客户端用它预加载。</summary>
-        public static readonly string[] TableNames = { "Item", "LocEn", "LocFont", "LocZh", "RedDot", "ServerList", "UISprite" };
+        public static readonly string[] TableNames = { "Item", "LocEn", "LocFont", "LocZh", "RedDot", "ServerList", "SheepLevel", "SheepPet", "ShopItem", "UISprite" };
 
         public TbItem Item { get; private set; }
         public TbLocEn LocEn { get; private set; }
@@ -19,6 +19,9 @@ namespace GameFramework.Config
         public TbLocZh LocZh { get; private set; }
         public TbRedDot RedDot { get; private set; }
         public TbServerList ServerList { get; private set; }
+        public TbSheepLevel SheepLevel { get; private set; }
+        public TbSheepPet SheepPet { get; private set; }
+        public TbShopItem ShopItem { get; private set; }
         public TbUISprite UISprite { get; private set; }
 
         partial void LoadTables(Func<string, byte[]> readFile, List<object> loaded)
@@ -35,6 +38,12 @@ namespace GameFramework.Config
             loaded.Add(RedDot);
             ServerList = TbServerList.Read(readFile(TbServerList.FileName));
             loaded.Add(ServerList);
+            SheepLevel = TbSheepLevel.Read(readFile(TbSheepLevel.FileName));
+            loaded.Add(SheepLevel);
+            SheepPet = TbSheepPet.Read(readFile(TbSheepPet.FileName));
+            loaded.Add(SheepPet);
+            ShopItem = TbShopItem.Read(readFile(TbShopItem.FileName));
+            loaded.Add(ShopItem);
             UISprite = TbUISprite.Read(readFile(TbUISprite.FileName));
             loaded.Add(UISprite);
         }
@@ -47,6 +56,9 @@ namespace GameFramework.Config
             LocZh = null;
             RedDot = null;
             ServerList = null;
+            SheepLevel = null;
+            SheepPet = null;
+            ShopItem = null;
             UISprite = null;
         }
     }
